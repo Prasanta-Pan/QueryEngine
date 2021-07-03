@@ -861,7 +861,13 @@ public class QueryImp<T> implements Query<T> {
 					else if (op == OP_BET) {
 						@SuppressWarnings("unchecked")
 						List<Object> list = (List<Object>) tmp.val;
-						ctx.seek(rev ? list.get(1) : list.get(0), rev);
+						Object sVal = rev ? higherValue(new Node(list.get(1), tmp.type)) : list.get(0);
+						// convert to proper value
+						if (sVal instanceof MyNumber) {
+							sVal = ((MyNumber) sVal).numObj;
+						}
+						// seek now
+						ctx.seek(sVal, rev);
 					} else
 						seek = seekBySk = false;
 				}
