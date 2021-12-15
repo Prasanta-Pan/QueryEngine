@@ -4,7 +4,7 @@ package org.pp.qry.interfaces;
  * @author prasantsmac
  *
  */
-public interface QueryContext<T> {
+public interface QueryDataProvider<T> {
 		
    /**
     * Return true if specified field is sort key other wise false

@@ -9,51 +9,53 @@ public interface Query<T> {
 	 * @param val
 	 * @return
 	 */
-	public Query<T> setParam(int val);
+	public Query<T> setParam(int pos, int val);
+	
 	/**
      * Set long parameter
      * @param val
      * @return
      */
-	public Query<T> setParam(long val);
+	public Query<T> setParam(int pos, long val);
+	
 	/**
      * Set float parameter
      * @param val
      * @return
      */
-	public Query<T> setParam(float val);
+	public Query<T> setParam(int pos, float val);
 	/**
      * Set double parameter
      * @param val
      * @return
      */
-	public Query<T> setParam(double val);
+	public Query<T> setParam(int pos, double val);
 	/**
      * Set String parameter
      * @param val
      * @return
      */
-	public Query<T> setParam(String val);
+	public Query<T> setParam(int pos, String val);
 	/**
      * Set boolean parameter
      * @param val
      * @return
      */
-	public Query<T> setParam(boolean val);
+	public Query<T> setParam(int pos, boolean val);
 	
 	/**
      * Set list of objects for between/not between operator
      * @param val
      * @return
      */
-	public Query<T> setParam(List<?> list);
+	public Query<T> setParam(int pos, List<?> list);
 	
 	/**
      * Set set of objects for in/not in operator
      * @param val
      * @return
      */
-	public Query<T> setParam(Set<?> set);
+	public Query<T> setParam(int pos, Set<?> set);
 	/**
 	 * Default is asc order. set true to reverse order
 	 * @param rev

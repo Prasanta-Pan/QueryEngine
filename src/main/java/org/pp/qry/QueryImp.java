@@ -1,5 +1,58 @@
 package org.pp.qry;
 
+import static org.pp.qry.AbstractNode.toNode;
+import static org.pp.qry.NumberNode.DBL;
+import static org.pp.qry.NumberNode.FLT;
+import static org.pp.qry.NumberNode.INT;
+import static org.pp.qry.NumberNode.LNG;
+import static org.pp.qry.interfaces.Node.OP_ADD;
+import static org.pp.qry.interfaces.Node.OP_AND;
+import static org.pp.qry.interfaces.Node.OP_BET;
+import static org.pp.qry.interfaces.Node.OP_DIV;
+import static org.pp.qry.interfaces.Node.OP_EQ;
+import static org.pp.qry.interfaces.Node.OP_GT;
+import static org.pp.qry.interfaces.Node.OP_GTE;
+import static org.pp.qry.interfaces.Node.OP_IN;
+import static org.pp.qry.interfaces.Node.OP_LT;
+import static org.pp.qry.interfaces.Node.OP_LTE;
+import static org.pp.qry.interfaces.Node.OP_MOD;
+import static org.pp.qry.interfaces.Node.OP_MUL;
+import static org.pp.qry.interfaces.Node.OP_NBET;
+import static org.pp.qry.interfaces.Node.OP_NEQ;
+import static org.pp.qry.interfaces.Node.OP_NIN;
+import static org.pp.qry.interfaces.Node.OP_OR;
+import static org.pp.qry.interfaces.Node.OP_PRN;
+import static org.pp.qry.interfaces.Node.OP_SUB;
+import static org.pp.qry.interfaces.Node.PRI_AND;
+import static org.pp.qry.interfaces.Node.PRI_COND_OP;
+import static org.pp.qry.interfaces.Node.PRI_MATH_HIGH;
+import static org.pp.qry.interfaces.Node.PRI_MATH_LOW;
+import static org.pp.qry.interfaces.Node.PRI_OR;
+import static org.pp.qry.interfaces.Node.PRI_PARAN;
+import static org.pp.qry.interfaces.Node.STR_ADD;
+import static org.pp.qry.interfaces.Node.STR_AND;
+import static org.pp.qry.interfaces.Node.STR_BET;
+import static org.pp.qry.interfaces.Node.STR_DIV;
+import static org.pp.qry.interfaces.Node.STR_EQ;
+import static org.pp.qry.interfaces.Node.STR_GT;
+import static org.pp.qry.interfaces.Node.STR_GTE;
+import static org.pp.qry.interfaces.Node.STR_IN;
+import static org.pp.qry.interfaces.Node.STR_LT;
+import static org.pp.qry.interfaces.Node.STR_LTE;
+import static org.pp.qry.interfaces.Node.STR_MOD;
+import static org.pp.qry.interfaces.Node.STR_MUL;
+import static org.pp.qry.interfaces.Node.STR_NBET;
+import static org.pp.qry.interfaces.Node.STR_NEQ;
+import static org.pp.qry.interfaces.Node.STR_NIN;
+import static org.pp.qry.interfaces.Node.STR_NOT;
+import static org.pp.qry.interfaces.Node.STR_OR;
+import static org.pp.qry.interfaces.Node.STR_PRN_END;
+import static org.pp.qry.interfaces.Node.STR_SUB;
+import static org.pp.qry.interfaces.Node.TYPE_NUM;
+import static org.pp.qry.interfaces.Node.TYPE_OP;
+import static org.pp.qry.interfaces.Node.TYPE_PRN;
+import static org.pp.qry.interfaces.Node.TYPE_STR;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
@@ -9,9 +62,11 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import org.pp.qry.interfaces.AbstractAction;
+import org.pp.qry.interfaces.Node;
 import org.pp.qry.interfaces.ObjectIterator;
 import org.pp.qry.interfaces.Query;
-import org.pp.qry.interfaces.QueryContext;
+import org.pp.qry.interfaces.QueryDataProvider;
 /**
  * implementation of Query API
  * @author prasantsmac
@@ -19,72 +74,12 @@ import org.pp.qry.interfaces.QueryContext;
  * @param <T>
  */
 public class QueryImp<T> implements Query<T> {
-	/** declare operator cOonstant */
-	private static final int OP_MUL = 0;
-	private static final int OP_DIV = 1;
-	private static final int OP_MOD = 2;
-	private static final int OP_ADD = 3;
-	private static final int OP_SUB = 4;
-	private static final int OP_LT = 5;
-	private static final int OP_LTE = 6;
-	private static final int OP_GTE = 7;
-	private static final int OP_GT = 8;
-	private static final int OP_EQ = 9;
-	private static final int OP_NEQ = 10;
-	private static final int OP_AND = 11;
-	private static final int OP_OR = 12;
-	private static final int OP_BET = 13;
-	private static final int OP_NBET = 14;
-	private static final int OP_IN = 15;
-	private static final int OP_NIN = 16;
-	private static final int OP_PRN = 17;
-
-	/** Declares operator's priority */
-	private static final int PRI_PARAN = 99; // '(' expression ')'
-	private static final int PRI_MATH_HIGH = 95; // '*', '/' , '%'
-	private static final int PRI_MATH_LOW = 80; // '+' , '-'
-	private static final int PRI_COND_OP = 75; // '>', '>=', '<', '<=', '=' , '!=', 'in', 'between'
-	private static final int PRI_AND = 70; // '&&'
-	private static final int PRI_OR = 65; // '||'
-
-	/** Declare value type */
-	private static final int TYPE_PRM = 7; // Type Parameter
-	private static final int TYPE_OP = 6; // Type operator
-	private static final int TYPE_ID = 5; // Value type is ID
-	private static final int TYPE_STR = 4; // Value type is String value
-	private static final int TYPE_NUM = 3; // Value type is number
-	private static final int TYPE_BOOL = 2; // Value type is boolean
-	private static final int TYPE_NULL = 1; // Value type is null
-	private static final int TYPE_PRN = 0;
-
-	/** Constant for debugging purpose */
-	private static final String STR_ADD = "+";
-	private static final String STR_SUB = "-";
-	private static final String STR_MUL = "*";
-	private static final String STR_DIV = "/";
-	private static final String STR_MOD = "%";
-	private static final String STR_GT = ">";
-	private static final String STR_GTE = ">=";
-	private static final String STR_LT = "<";
-	private static final String STR_LTE = "<=";
-	private static final String STR_EQ = "=";
-	private static final String STR_NEQ = "!=";
-	private static final String STR_AND = "&&";
-	private static final String STR_OR = "||";
-	private static final String STR_IN = "in";
-	private static final String STR_NOT = "not";
-	private static final String STR_NIN = "nin";
-	private static final String STR_BET = "between";
-	private static final String STR_NBET = "nbet";
-	private static final String STR_PRN = "(";
-	private static final String STR_PRN_END = ")";
-
 	/** Root Node of expression tree */
 	private Node root = null;
 	/** Query Context to handle data loading */
-	private QueryContext<T> ctx;
+	private QueryDataProvider<T> ctx;
 	/** Code points of SQL queries */
-	private int[] codePoints = null;
+	private char[] chars = null;
 	/** Hold current code pointer as well as number of operations */
 	private int pos = 0;
 	/** Load sequence number */
@@ -103,21 +98,317 @@ public class QueryImp<T> implements Query<T> {
 	private boolean rev = false;
 	/** if seek by sort key */
 	private boolean seekBySk = false;
+	// all action to Execute
+	static final AbstractAction[] actions = new AbstractAction[17];
+	
+	// configure all actions
+    static {
+    	// multiply action
+    	actions[OP_MUL] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.mul(right, false);
+			}
 
+			@Override
+			public Node validate(Node left, Node right) {
+				// TODO Auto-generated method stub
+				return left.mul(right, true);
+			}
+    	};
+    	// addition action
+    	actions[OP_ADD] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.plus(right, false);
+			}
+
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.plus(right, true);
+			}
+	
+    	};
+    	// divide action
+    	actions[OP_DIV] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.div(right, false);
+			}
+
+			@Override
+			public Node validate(Node left, Node right) {
+				// TODO Auto-generated method stub
+				return left.div(right, true);
+			}
+    	};
+    	// remainder action
+    	actions[OP_MOD] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.rem(right, false);
+			}	
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				// TODO Auto-generated method stub
+				return left.rem(right, true);
+			}
+    	};
+    	// subtraction action
+    	actions[OP_SUB] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.minus(right, false);
+			}
+
+			@Override
+			public Node validate(Node left, Node right) {
+				// TODO Auto-generated method stub
+				return left.minus(right, true);
+			}	
+    	};
+    	// greater action
+    	actions[OP_GT] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.gt(right, false);
+			}
+
+			@Override
+			public Node validate(Node left, Node right) {
+				// TODO Auto-generated method stub
+				return left.gt(right, true);
+			}  
+			
+			@Override
+			public boolean seekable() {
+				// TODO Auto-generated method stub
+				return true;
+			}
+
+			@Override
+			public Object getSeekableValue(Node value, boolean rev) {
+				// TODO Auto-generated method stub
+				return rev ? null : value.higherValue();
+			}			 		
+    	};
+    	// greater than equal action
+    	actions[OP_GTE] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.ge(right, false);
+			}
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				// TODO Auto-generated method stub
+				return left.gt(right, true);
+			}   
+
+			@Override
+			public boolean seekable() {
+				// TODO Auto-generated method stub
+				return true;
+			}
+
+			@Override
+			public Object getSeekableValue(Node value, boolean rev) {
+				// TODO Auto-generated method stub
+				return rev ? null : value.value();
+			}    		
+    	};
+    	// less than action
+    	actions[OP_LT] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.lt(right, false);
+			}
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.lt(right, true);
+			}
+
+			@Override
+			public boolean seekable() {
+				// TODO Auto-generated method stub
+				return true;
+			}
+
+			@Override
+			public Object getSeekableValue(Node value, boolean rev) {
+				// TODO Auto-generated method stub
+				return rev ? value.value(): null;
+			}    		
+    	};
+    	// less than equal to action
+    	actions[OP_LTE] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.le(right, false);
+			}
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.le(right, true);
+			}
+
+			@Override
+			public boolean seekable() {
+				// TODO Auto-generated method stub
+				return true;
+			}
+
+			@Override
+			public Object getSeekableValue(Node value, boolean rev) {
+				// TODO Auto-generated method stub
+				return rev ? value.higherValue() : null;
+			}    		
+    	};
+    	// equal action
+    	actions[OP_EQ] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.eq(right, false);
+			}
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.eq(right, true);
+			}
+			
+			@Override
+			public boolean seekable() {
+				// TODO Auto-generated method stub
+				return true;
+			}
+
+			@Override
+			public Object getSeekableValue(Node value, boolean rev) {
+				// TODO Auto-generated method stub
+				return rev ? value.higherValue() : value.value();
+			}    		
+    	};
+    	// not equal action
+    	actions[OP_NEQ] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.neq(right, false);
+			}
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.neq(right, true);
+			}
+   		
+    	};
+    	// between action
+    	actions[OP_BET] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.bet(right, false);
+			}
+
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.bet(right, true);
+			}
+			
+			@Override
+			public boolean seekable() {
+				// TODO Auto-generated method stub
+				return true;
+			}
+
+			@Override
+			@SuppressWarnings("unchecked")
+			public Object getSeekableValue(Node value, boolean rev) {
+				// ensure node is of List Node type
+				if (value instanceof ListNode) {
+					// cast to list node
+					ListNode o = (ListNode) value;
+				    // get list of nodes
+					List<Node> list = (List<Node>) o.value();
+					return rev ? list.get(1).higherValue() : list.get(0).value();
+				}
+				throw new RuntimeException("Was expecting a ListNode type");
+			}    		
+    	};
+    	// not between action
+    	actions[OP_NBET] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.nbet(right, false);
+			}
+
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.nbet(right, true);
+			}    		
+    	};
+    	// in action
+    	actions[OP_IN] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.in(right, false);
+			}
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.in(right, true);
+			}		   		
+    	};
+    	// not between action
+    	actions[OP_NIN] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.nin(right, false);
+			}
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.nin(right, true);
+			}		
+    	};
+    	// and action
+    	actions[OP_AND] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.and(right, false);
+			}
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.and(right, true);
+			}
+ 		
+    	};
+    	// or action
+    	actions[OP_OR] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.or(right, false);
+			}
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.or(right, true);
+			} 		
+    	};
+    }
+    
 	private QueryImp() {		
 	}
 
 	/** New instance of Query Engine */
-	public QueryImp(String sql, QueryContext<T> ctx) {
+	public QueryImp(String sql, QueryDataProvider<T> ctx) {
 		this();
 		// 
-		if (sql == null)
-			throw new NullPointerException("Null query");
-		// 
-		if (ctx == null)
-			throw new NullPointerException("Query context can not be null");
+		if (sql == null || ctx == null)
+			throw new NullPointerException("Null query or DataProvider not allowed");
 		// extract code points
-		this.codePoints = sql.codePoints().toArray();
+		chars = sql.toCharArray();
 		this.ctx = ctx;
 		compile();
 	}
@@ -127,130 +418,125 @@ public class QueryImp<T> implements Query<T> {
 		ctx.reset();
 		seek = seekBySk = false;
 		stk = null;
-		codePoints = null;
+		chars = null;
 		params = null;
 		root = null;
 		sb = null;
 	}
-
-	@Override
-	public Query<T> setParam(int val) {
-		// convert to number
-		MyNumber num = new MyNumber(MyNumber.INT, val);
-		// convert to number node
-		Node node = new Node(num, TYPE_NUM);
-		// add to parameter list
-		params.add(node);
-	    return this;
+	
+	private Query<T> add(int pos, Node node) {
+		// check position 
+		pos = pos -1;
+		if (pos < 0 || pos > params.size())
+			throw new RuntimeException("Invalid parameter position: " + pos);
+		// add node
+		params.add(pos, node);
+		return this;
+			
 	}
 
 	@Override
-	public Query<T> setParam(long val) {
-		// convert to number
-		MyNumber num = new MyNumber(MyNumber.LONG, val);
+	public Query<T> setParam(int pos, int val) {
 		// convert to number node
-		Node node = new Node(num, TYPE_NUM);
+		Node node = new IntNode(val);
 		// add to parameter list
-		params.add(node);
-		return this;
+		return add(pos, node);
 	}
 
 	@Override
-	public Query<T> setParam(float val) {
-		// convert to number
-		MyNumber num = new MyNumber(MyNumber.FLT, val);
+	public Query<T> setParam(int pos, long val) {
 		// convert to number node
-		Node node = new Node(num, TYPE_NUM);
+		Node node = new LongNode(val);
 		// add to parameter list
-		params.add(node);
-		return this;
+		return add(pos, node);
 	}
 
 	@Override
-	public Query<T> setParam(double val) {
-		// convert to number
-		MyNumber num = new MyNumber(MyNumber.DBL, val);
+	public Query<T> setParam(int pos, float val) {
 		// convert to number node
-		Node node = new Node(num, TYPE_NUM);
+		Node node = new FloatNode(val);
 		// add to parameter list
-		params.add(node);
-		return this;
+		return add(pos, node);
 	}
 
 	@Override
-	public Query<T> setParam(String val) {
-		// convert to number node
-		Node node = new Node(val, TYPE_STR);
+	public Query<T> setParam(int pos, double val) {
+		// convert to double node
+		Node node = new DoubleNode(val);
 		// add to parameter list
-		params.add(node);
-		// return reference
-		return this;
+		return add(pos, node);
 	}
 
 	@Override
-	public Query<T> setParam(boolean val) {
-		// convert to number node
-		Node node = new Node(val, TYPE_BOOL);
+	public Query<T> setParam(int pos, String val) {
+		// convert to String node
+		Node node = new StringNode(val);
 		// add to parameter list
-		params.add(node);
-		return this;
+		return add(pos, node);
+	}
+
+	@Override
+	public Query<T> setParam(int pos, boolean val) {
+		// convert to boolean node
+		Node node = new BooleanNode(val);
+		// add to parameter list
+		return add(pos, node);
 	}
 	
 	@Override
-	public Query<T> setParam(List<?> list) {
+	public Query<T> setParam(int pos, List<?> list) {
 		// must be for between/not between operator
 		if (list.size() != 2)
 			tRex("Parameter list size must be 2");
 		// construct a new list of arguments
-		List<Object> newList = new ArrayList<>();
+		List<Node> newList = new ArrayList<>();
 		Node tmp = null, node = null;
 		// verify all objects
 		for (Object obj : list) {
-			node = Node.objToNode(obj);
-			// custom object type and null is not allowed
-			if (node.type == TYPE_NULL)
-				tRex("Parameter list can not contains null");
-			if (tmp != null && tmp.type != node.type)
-				tRex("All objects in paramter list must be of same type");
+			// null value is not allowed
+			if (obj == null || obj instanceof Boolean)
+				throw new RuntimeException("Parameter list can not contains null or boolean type");
+			// convert to value node
+			node = toNode(obj);
+			// all node must be of same type
+			if (tmp != null && tmp.getType() != node.getType())
+				throw new RuntimeException("All objects in paramter list must be of same type");
+			// reference to check same type
 			tmp = node;
-			newList.add(tmp.val);
+			// Add to the list
+			newList.add(node);
 		}
 		// verify if range is valid
-		if (compare(tmp.type, newList.get(0), newList.get(1)) >= 0)
-			tRex("Invalid range");
-		// create a new node
-		node = new Node(newList, tmp.type);
+		if (newList.get(0).compare(newList.get(1)) >= 0)
+			throw new RuntimeException("Invalid range");
 		// add to parameter list
-		params.add(node);
-		// return reference
-		return this;
+		return add(pos, node);
 	}
 
 	@Override
-	public Query<T> setParam(Set<?> set) {
+	public Query<T> setParam(int pos, Set<?> set) {
 		// first check for valid set
 		if (set == null || set.size() == 0)
 			tRex("Empty or nul set");
 		// new hash set
-		Set<Object> newSet = new HashSet<>();
+		Set<Node> newSet = new HashSet<>();
 		Node tmp = null, node = null;
 		// verify all objects
 		for (Object obj : set) {
-			node = Node.objToNode(obj);
-			// custom object type and null is not allowed
-			if (node.type == TYPE_NULL)
-				tRex("Parameter set can not contains null");
-			if (tmp != null && tmp.type != node.type)
-				tRex("All objects in paramter set must be of same type");
+			// null value is not allowed
+			if (obj == null || obj instanceof Boolean)
+				throw new RuntimeException("Parameter list can not contains null or boolean type");
+			// convert to value node
+			node = toNode(obj);
+			// all node must be of same type
+			if (tmp != null && tmp.getType() != node.getType())
+				throw new RuntimeException("All objects in paramter list must be of same type");
+			// reference to check same type
 			tmp = node;
-			newSet.add(tmp.val);
+			newSet.add(node);
 		}
-		// create a new node
-		node = new Node(newSet, tmp.type);
 		// add to parameter list
-		params.add(node);
-		// return reference
-		return this;
+		return add(pos, node);
 	}
 	
 	@Override
@@ -309,11 +595,13 @@ public class QueryImp<T> implements Query<T> {
 		expr();
 		// Stack size
 		if (stk.size() != 1)
-			tRex("Something seriously went wrong");
+			tRex("Invalid Expression");
 		// assign it to root node
 		root = stk.pop();
-		if (root.priority > PRI_COND_OP)
-			tRex("Invalid expression, expression must be evaluated to binray value");
+		if (root.getPriority()> PRI_COND_OP)
+			tRex("Invalid expression, expression must be evaluated to binary value");
+		// validate expression tree now
+		validate(root);
 	}
 
 	/**
@@ -321,19 +609,22 @@ public class QueryImp<T> implements Query<T> {
 	 */
 	private void expr() {
 		char token = checkNextChar();
-		// if parentheses start
-		if (token != '(')
-			operand();// get operand
-		else {
+		// if start of parentheses
+		if (token == '(') {
 			pos++;
-			stk.push(new Node(OP_PRN, TYPE_PRN, PRI_PARAN));
+			stk.push(new OperatorNode(OP_PRN, TYPE_PRN, PRI_PARAN));
 			// call expression recursively
 			expr();
-			expectToken(STR_PRN_END);
+			if (checkNextChar() != ')')
+				throw new RuntimeException("Expecting ')' @" + pos);
 			// process parentheses
 			processParan();
+			pos++;
 		}
-		// if operator
+		// otherwise must expect a operand
+		else 
+			operand();
+		// check any operator available or not
 		operator();
 	}
 
@@ -343,14 +634,20 @@ public class QueryImp<T> implements Query<T> {
 	private void processParan() {
 		// remove right operand
 		Node r = stk.pop();
-		if (r.type == OP_PRN)
+		if (r.getType() == TYPE_PRN)
 			return;
 		// remove '('
 		stk.pop();
 		// Make it high priority
-		r.priority = PRI_PARAN;
-		if (!stk.isEmpty())
+		if (r.isOperator())
+			r.setPriority(PRI_PARAN);
+		// build tree if stack not empty
+		if (!stk.isEmpty() && stk.peek().getType() == TYPE_OP) {
 			buildTree(r);
+		}
+     	// otherwise push to stack
+		else 
+			stk.push(r);
 	}
 
 	/**
@@ -362,32 +659,37 @@ public class QueryImp<T> implements Query<T> {
 		// get token
 		String op = nextToken();
 		if (op.length() > 0) {
+			// if parentheses end 
+			if (op.startsWith(")")) {
+				pos = cPos;
+				return;
+			}
 			// Possible operator of one length
 			if (op.length() == 1) {
 				switch (op) {
 				case STR_GT:
-					stk.push(new Node(OP_GT, TYPE_OP, PRI_COND_OP));
+					stk.push(new OperatorNode(OP_GT, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_LT:
-					stk.push(new Node(OP_LT, TYPE_OP, PRI_COND_OP));
+					stk.push(new OperatorNode(OP_LT, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_EQ:
-					stk.push(new Node(OP_EQ, TYPE_OP, PRI_COND_OP));
+					stk.push(new OperatorNode(OP_EQ, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_ADD:
-					stk.push(new Node(OP_ADD, TYPE_OP, PRI_MATH_LOW));
+					stk.push(new OperatorNode(OP_ADD, TYPE_OP, PRI_MATH_LOW));
 					break;
 				case STR_SUB:
-					stk.push(new Node(OP_SUB, TYPE_OP, PRI_MATH_LOW));
+					stk.push(new OperatorNode(OP_SUB, TYPE_OP, PRI_MATH_LOW));
 					break;
 				case STR_MUL:
-					stk.push(new Node(OP_MUL, TYPE_OP, PRI_MATH_HIGH));
+					stk.push(new OperatorNode(OP_MUL, TYPE_OP, PRI_MATH_HIGH));
 					break;
 				case STR_DIV:
-					stk.push(new Node(OP_DIV, TYPE_OP, PRI_MATH_HIGH));
+					stk.push(new OperatorNode(OP_DIV, TYPE_OP, PRI_MATH_HIGH));
 					break;
 				case STR_MOD:
-					stk.push(new Node(OP_MOD, TYPE_OP, PRI_MATH_HIGH));
+					stk.push(new OperatorNode(OP_MOD, TYPE_OP, PRI_MATH_HIGH));
 					break;
 				case STR_PRN_END:
 					pos = cPos;
@@ -400,19 +702,19 @@ public class QueryImp<T> implements Query<T> {
 			else if (op.length() == 2) {
 				switch (op) {
 				case STR_GTE:
-					stk.push(new Node(OP_GTE, TYPE_OP, PRI_COND_OP));
+					stk.push(new OperatorNode(OP_GTE, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_LTE:
-					stk.push(new Node(OP_LTE, TYPE_OP, PRI_COND_OP));
+					stk.push(new OperatorNode(OP_LTE, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_NEQ:
-					stk.push(new Node(OP_NEQ, TYPE_OP, PRI_COND_OP));
+					stk.push(new OperatorNode(OP_NEQ, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_OR:
-					stk.push(new Node(OP_OR, TYPE_OP, PRI_OR));
+					stk.push(new OperatorNode(OP_OR, TYPE_OP, PRI_OR));
 					break;
 				case STR_AND:
-					stk.push(new Node(OP_AND, TYPE_OP, PRI_AND));
+					stk.push(new OperatorNode(OP_AND, TYPE_OP, PRI_AND));
 					break;
 				case STR_IN:
 					processSplOp(OP_IN);
@@ -429,13 +731,13 @@ public class QueryImp<T> implements Query<T> {
 					cPos = pos;
 					op = nextToken();
 					switch (op) {
-					case STR_BET:
+					   case STR_BET:
 						processSplOp(OP_NBET);
 						return;
-					case STR_IN:
+					   case STR_IN:
 						processSplOp(OP_NIN);
 						return;
-					default:
+					  default:
 						tRex("Expecting 'between' or 'in' operator @" + cPos);
 					}
 					break;
@@ -464,8 +766,8 @@ public class QueryImp<T> implements Query<T> {
 	 */
 	private String nextToken() {
 		sb.setLength(0);
-		for (int uPoint = -1, state = -1; pos < codePoints.length; pos++) {
-			uPoint = codePoints[pos];
+		for (int uPoint = -1, state = -1; pos < chars.length; pos++) {
+			uPoint = chars[pos];
 			switch (state) {
 			   case -1 :
 				   if (Character.isWhitespace(uPoint))
@@ -485,26 +787,13 @@ public class QueryImp<T> implements Query<T> {
 	}
 
 	/**
-	 * Expect next token. if not throw exception
-	 * 
-	 * @param exTkn
-	 * @return
-	 */
-	private boolean expectToken(String exTkn) {
-		int cPos = pos;
-		if (!exTkn.equals(nextToken()))
-			tRex("Excpecting '" + exTkn + "' @" + cPos);
-		return true;
-	}
-
-	/**
 	 * Get the next character token
 	 * 
 	 * @return
 	 */
 	private char checkNextChar() {
-		for (int uPoint = -1; pos < codePoints.length; pos++) {
-			uPoint = codePoints[pos];
+		for (int uPoint = -1; pos < chars.length; pos++) {
+			uPoint = chars[pos];
 			if (!Character.isWhitespace(uPoint))
 				return (char) uPoint;
 		}
@@ -517,7 +806,8 @@ public class QueryImp<T> implements Query<T> {
 	 * @param op
 	 */
 	private void processSplOp(int op) {
-		stk.push(new Node(op, TYPE_OP, PRI_COND_OP));
+		// push condition to stack
+		stk.push(new OperatorNode(op, TYPE_OP, PRI_COND_OP));
 		// Check parentheses start
 		Node r = null;
 		int cPos = pos;
@@ -528,24 +818,27 @@ public class QueryImp<T> implements Query<T> {
 			r = stk.pop();
 		} else {
 			if (ch != '(')
-				tRex("Expecting '(' @" + cPos);
+				throw new RuntimeException("Expecting '(' @" + cPos);
 			pos++;
 			// list of right arguments
-			Collection<Object> col = op < OP_IN ? new ArrayList<>() : new HashSet<>();
+			Collection<Node> col = op < OP_IN ? new ArrayList<>() : new HashSet<>();
 			// Start getting operand
 			Node l = null;
 			for (;;) {
 				// get next operand
 				operand();
+				// pop last recorded operand
 				r = stk.pop();
-				// id is not allowed
-				if (r.type == TYPE_ID || r.type == TYPE_NULL || r.type == TYPE_PRM)
-					tRex("Identifier/null/? not allowed for in/between operator @" + cPos);
-				if (l != null && l.type != r.type)
-					tRex("Type mismatch for in/between operator @" + cPos);
+				// check prohibited operators
+				int opr = r.getType();
+				if (!(opr == TYPE_NUM || opr == TYPE_STR))
+					throw new RuntimeException("Only String/Number type allowed for in/between operator @" + cPos);
+				// check value type matches
+				if (l != null && l.getType() != r.getType())
+					throw new RuntimeException("Type mismatch for in/between operator @" + cPos);
 				// add to set
 				l = r;
-				col.add(l.val);
+				col.add(r);
 				try {
 					// get ',' or ')'
 					ch = checkNextChar();
@@ -554,49 +847,34 @@ public class QueryImp<T> implements Query<T> {
 					if (ch == ')')
 						break;
 					else
-						tRex("Expecting ',' or ')' @" + cPos);
+						throw new RuntimeException("Expecting ',' or ')' @" + cPos);
 				} finally {
 					pos++;
 				}
 				
 			}
-			// check if multiple operands were provided
-			if (op < OP_IN && col.size() > 2)
-				tRex("More than two operands for (not) between operator @" + cPos);
-			// verify list in range for between/not between operator
+			// some extra validation for between/not between operator
 			if (op < OP_IN) {
-				List<Object> list = (List<Object>) col;
-				if (compare(l.type, list.get(0), list.get(1)) >= 0)
-					tRex("Invalid range for between/not between operator @" + cPos);
+				// more than 2 operands are not acceptable
+				if (col.size() > 2)
+					throw new RuntimeException("More than two operands for (not) between operator @" + cPos);
+				// now check range validity
+				List<Node> list = (List<Node>) col;
+				if (list.get(0).compare(list.get(1)) >= 0)
+					throw new RuntimeException("Invalid range for between/not between operator @" + cPos);
+				// if all cool
+				r = new ListNode(list);
 			}
-			// Set of Node
-			r = new Node(col, l.type);
+			// if in/not operator create set node
+			else {
+				Set<Node> set = (Set<Node>) col;
+				r = new SetNode(set, l instanceof NumberNode ? true : false);
+			}			
 		}
 		// build tree now
 		buildTree(r);
 		// check for relational operator's presence
-		checkRelOp();
-	}
-
-	/**
-	 * Relational operator check for Operator Between/In operators
-	 */
-	private void checkRelOp() {
-		int cPos = pos;
-		String token = nextToken();
-		if (token.length() > 0) {
-			switch (token) {
-			case "&&":
-				stk.push(new Node(OP_AND, TYPE_OP, PRI_AND));
-				break;
-			case "||":
-				stk.push(new Node(OP_OR, TYPE_OP, PRI_OR));
-				break;
-			default:
-				tRex("Expecting '&&' or '||' @" + cPos);
-			}
-			expr();
-		}
+		operator();
 	}
 
 	/**
@@ -613,54 +891,58 @@ public class QueryImp<T> implements Query<T> {
 		Node oprnd = null;
 		// state machine
 		switch (state) {
-		// number state
-		case 0:
-		case 1:
-		case 2:
-		case 3:
-			// convert string to number now
-			MyNumber mn = null;
-			try {
-				mn = new MyNumber(sb.toString(), state);
-			} catch (NumberFormatException ne) {
-				tRexOprnd(c);
-			}
-			oprnd = new Node(mn, TYPE_NUM);
-			break;
-		// String
-		case 5:
-			oprnd = new Node(sb.toString(), TYPE_STR);
-			break;
-		// ID or keyword
-		case 6:
-			String id = sb.toString();
-			// verify not empty id
-			if ("".equals(id))
-				tRexOprnd(c);
-			// check type
-			switch (id) {
-			case "true":
-				oprnd = new Node(true, TYPE_BOOL);
+			// number state
+			case INT: // INT
+				oprnd = new IntNode(sb.toString());
 				break;
-			case "false":
-				oprnd = new Node(false, TYPE_BOOL);
+			case LNG: // long
+				oprnd = new LongNode(sb.toString());
 				break;
-			case "null":
-				oprnd = new Node(null, TYPE_NULL);
+			case FLT: // Float 
+				oprnd = new FloatNode(sb.toString());
 				break;
-			case "?":
-				oprnd = new Node(prmIndx++, TYPE_PRM);
+			case DBL: // Double
+				oprnd = new DoubleNode(sb.toString());
 				break;
+			// String
+			case 5:
+				oprnd = new StringNode(sb.toString());
+				break;
+			// ID or keyword
+			case 6:
+				String id = sb.toString();
+				// verify not empty id
+				if ("".equals(id))
+					tRexOprnd(c);
+				// if parentheses end
+				if (id.startsWith(")")) {
+					pos = c;
+					return;
+				}
+				// check type
+				switch (id) {
+					case "true":
+						oprnd = new BooleanNode(true);
+						break;
+					case "false":
+						oprnd = new BooleanNode(false);
+						break;
+					case "null":
+						oprnd = new NullNode();
+						break;
+					case "?":
+						oprnd = new ParameterNode(prmIndx++);
+						break;
+					default:
+						oprnd = new IDNode(id);
+				}
+				break;
+			// incomplete state
 			default:
-				oprnd = new Node(id, TYPE_ID);
-			}
-			break;
-		// incomplete state
-		default:
-			tRexOprnd(c);
+				tRexOprnd(c);
 		}		
 		// stack is empty or its between/in (not) operator
-		if (stk.isEmpty() || ((int) stk.peek().val) > OP_OR) {
+		if (stk.isEmpty() || stk.peek().intValue() > OP_OR) {
 			stk.push(oprnd);
 			return;
 		}
@@ -675,8 +957,8 @@ public class QueryImp<T> implements Query<T> {
 		// state and type to be return
 		int state = -1;
 		// start processing character by character
-		for (int uPoint = -1; pos < codePoints.length; pos++) {
-			uPoint = codePoints[pos];
+		for (int uPoint = -1; pos < chars.length; pos++) {
+			uPoint = chars[pos];
 			// state machine
 			switch (state) {
 			// initial state
@@ -690,7 +972,7 @@ public class QueryImp<T> implements Query<T> {
 				}
 				// If start of number
 				else if (isNumber(uPoint)) 
-					state = 0; // default integer type
+					state = INT; // default integer type
 				// keyword
 				else
 					state = 6;				
@@ -710,13 +992,13 @@ public class QueryImp<T> implements Query<T> {
 		    // number type
 			default:
 				if (uPoint == '.')
-					state = 2; // float type
+					state = FLT; // float type
 				// verify other type
 				else if (!isNumber(uPoint)) {
 					if (uPoint == 'd' || uPoint == 'D')
-						state = 3; // Double type
+						state = DBL; // Double type
 					else if (uPoint == 'l' || uPoint == 'L')
-						state = 1; // Long type
+						state = LNG; // Long type
 					else 
 						pos--;
 					// point to next
@@ -737,7 +1019,9 @@ public class QueryImp<T> implements Query<T> {
 	 * @return
 	 */
 	private boolean isNumber(int uPoint) {
-		return uPoint == '.' || (uPoint > 47 && uPoint < 58) || uPoint == '+' || uPoint == '-';
+		return uPoint == '.' || 
+				(uPoint > 47 && uPoint < 58) || 
+				uPoint == '+' || uPoint == '-';
 	}
 
 	/**
@@ -765,17 +1049,56 @@ public class QueryImp<T> implements Query<T> {
 		Node op = stk.pop();
 		// Pop left operand or subtree
 		Node l = stk.pop();
-
-		Node tmp = l;
-		while (tmp.right != null && op.priority > tmp.priority)
-			tmp = tmp.right;
-
-		Node nl = tmp.copy();
-		tmp.reset(op.val, op.type, op.priority, nl, r);
-		// Push resultant tree
+        // 
+		Node tmp = l, parent = null;
+		// find the right most node
+		while (tmp.right() != null && op.getPriority() > tmp.getPriority()) {
+			// reference parent
+			parent = tmp;
+			// move to right
+			tmp = tmp.right();
+		}
+        // set left node of operator
+		op.setLeft(tmp);
+		// set right
+		op.setRight(r);
+		// adjust tree root
+		if (parent == null)
+			l = op;
+		else
+			parent.setRight(op);
+		// Push root to stack
 		stk.push(l);
 	}
-
+	
+	/**
+	 * Validate entire expression tree
+	 * @param node
+	 * @return
+	 */
+	private Node validate(Node node) {
+		/**
+		 * Return if non terminal node
+		 */
+		if (!node.isOperator())
+			return node;
+		/**
+		 * visit left subtree first
+		 */
+		Node left = validate(node.left());
+		/**
+		 * Visit right subtree
+		 */
+		Node right = validate(node.right());
+		
+		// get operation code
+		int op = node.intValue();
+		/**
+		 * Validate now
+		 */
+		return actions[op].validate(left, right);		
+	}
+	
 	/**
 	 * Evaluate expression
 	 * 
@@ -784,34 +1107,34 @@ public class QueryImp<T> implements Query<T> {
 	 */
 	private Node evaluate(Node node) {
 		/**
-		 * Return if terminal node
+		 * return if non terminal operator
 		 */
-		if (node.type != TYPE_OP)
+		if (!node.isOperator())
 			return node;
-		// visit left subtree first
-		Node left = evaluate(node.left);
-		// get operator
-		int op = (int) node.val;
+		/**
+		 * Visit left subtree
+		 */
+		Node left = evaluate(node.left());
+		/**
+		 * Get operator code
+		 */
+		int op = node.intValue();
 		/**
 		 * if operator is '||' and left condition was satisfied than no need to visit
 		 * right subtree
 		 */
-		if (op == OP_OR && (boolean) left.val)
+		if (op == OP_OR && left.boolValue())
 			return left;
 		/**
 		 * If operator is '&&' and left condition was not satisfied than no need to
 		 * visit right subtree
 		 */
-		if (op == OP_AND && !(boolean) left.val)
+		if (op == OP_AND && !left.boolValue())
 			return left;
 		/**
 		 * Visit right subtree
 		 */
-		Node right = evaluate(node.right);
-		/**
-		 * Result to be return
-		 */
-		Node result = null;
+		Node right = evaluate(node.right());
 		/**
 		 * Operation tracker. help to track where to stop
 		 */
@@ -820,56 +1143,40 @@ public class QueryImp<T> implements Query<T> {
 		/**
 		 * Load records first if not loaded yet
 		 */
-		if (!seek && (left.type == TYPE_ID || right.type == TYPE_ID)) {
+		if (!seek && (left.isID() || right.isID())) {
 			/**
 			 * Check if records can be loaded using SortKey
 			 */
-			if (root.priority != PRI_OR && // if root condition is not '||'
+			if (root.getPriority() != PRI_OR && // if root condition is not '||'
 			// ensure both operand are not ID
-					!(left.type == TYPE_ID && right.type == TYPE_ID)) {
+					!(left.isID() && right.isID())) {
 				/**
 				 * Check if SortKey was specified
 				 */
 				Node tmp = null;
-				if (left.type == TYPE_ID && ctx.isSortKey((String) left.val))
-					tmp = paramToNode(right, op);
-				else if (right.type == TYPE_ID && ctx.isSortKey((String) right.val))
-					tmp = paramToNode(left, op);
+				// if left sort key
+				if (left.isID() && ctx.isSortKey(left.stringValue()))
+					tmp = paramToNode(right);
+				// right sort key
+				else if (right.isID() && ctx.isSortKey(right.stringValue()))
+					tmp = paramToNode(left);
 
 				/**
 				 * if sort key was provided
 				 */
 				if (tmp != null) {
-					// Assuming data will be seek based on sort key
-					seek = seekBySk = true;
-					// for '<'
-					if (op == OP_LT)
-						ctx.seek(rev ? tmp.val : null, rev);
-					// for '<='
-					else if (op == OP_LTE)
-						ctx.seek(rev ? higherValue(tmp) : null, rev);
-					// for '>'
-					else if (op == OP_GT)
-						ctx.seek(rev ? null : higherValue(tmp), rev);
-					// for '>='
-					else if (op == OP_GTE)
-						ctx.seek(rev ? null : tmp.val, rev);
-					// for '='
-					else if (op == OP_EQ)
-						ctx.seek(rev ? higherValue(tmp) : tmp.val, rev);
-					// for between operator
-					else if (op == OP_BET) {
-						@SuppressWarnings("unchecked")
-						List<Object> list = (List<Object>) tmp.val;
-						Object sVal = rev ? higherValue(new Node(list.get(1), tmp.type)) : list.get(0);
-						// convert to proper value
-						if (sVal instanceof MyNumber) {
-							sVal = ((MyNumber) sVal).numObj;
-						}
+					// retrieve action object using operator
+					AbstractAction action = actions[op];
+					// check if operator support seek or not
+					if (action.seekable()) {
+						// get value to seek
+						Object val = action.getSeekableValue(tmp, rev);
 						// seek now
-						ctx.seek(sVal, rev);
-					} else
-						seek = seekBySk = false;
+						ctx.seek(val, rev);
+						// marked as data seek is done
+						seek = seekBySk = true;
+					}
+						
 				}
 			}
 			/**
@@ -896,286 +1203,52 @@ public class QueryImp<T> implements Query<T> {
 		/**
 		 * Convert parameter node to value node
 		 */
-		l = paramToNode(l, op);
-		r = paramToNode(r, op);
+		l = paramToNode(l);
+		r = paramToNode(r);
+		
+        /**
+         * Execute operator action now
+         */
+		Node result = actions[op].execute(l, r);
 
-		// If arithmetic operator '+', '-' , '/' , '*' , '%'
-		if (op < OP_LT) {
-			// validate type
-			if (l.type != r.type || l.type != TYPE_NUM)
-				tRex("Type must be number for both operand '" + left.val + " " + op + " " + right.val + "'");
-			// Now get numbers
-			MyNumber mnl = (MyNumber) l.val;
-			MyNumber mnr = (MyNumber) r.val;
-			//
-			switch (op) {
-			case OP_ADD:
-				result = new Node(mnl.add(mnr), TYPE_NUM);
-				break;
-			case OP_SUB:
-				result = new Node(mnl.sub(mnr), TYPE_NUM);
-				break;
-			case OP_MUL:
-				result = new Node(mnl.mul(mnr), TYPE_NUM);
-				break;
-			case OP_DIV:
-				result = new Node(mnl.div(mnr), TYPE_NUM);
-				break;
-			case OP_MOD:
-				result = new Node(mnl.remainder(mnr), TYPE_NUM);
-				break;
-			default:
-				tRex("Unknown operation type");
-			}
-		}
 		/**
-		 * Must be conditional operator
+		 * If the operation sequence is sort key condition Stop moving further
 		 */
-		else {
-			// Return value must be boolean condition
-			result = new Node(false, TYPE_BOOL);
-			// For condition operator >, >=, <, <=
-			if (op < OP_EQ) {
-				// validate type
-				if (l.type != r.type || l.val == null)
-					tRex("Type mismatch or null value '" + left.val + " " + op + " " + right.val + "'");
-				// do action
-				switch (op) {
-				case OP_GT:
-					result.val = (compare(l.type, l.val, r.val) > 0) ? true : false;
-					break;
-				case OP_GTE:
-					result.val = (compare(l.type, l.val, r.val) >= 0) ? true : false;
-					break;
-				case OP_LT:
-					result.val = (compare(l.type, l.val, r.val) < 0) ? true : false;
-					break;
-				case OP_LTE:
-					result.val = (compare(l.type, l.val, r.val) <= 0) ? true : false;
-					break;
-				default:
-					tRex("Unknown operation type");
-				}
-			}
-			// For Conditional operator = , !=
-			else if (op < OP_AND) {
-				/**
-				 * If both are non null
-				 */
-				if (l.val != null && r.val != null) {
-					// Check type first
-					if (l.type != r.type)
-						tRex("Type mismatch '" + left.val + " " + op + " " + right.val + "'");
-					/**
-					 * Compare both operand
-					 */
-					int eq = compare(l.type, l.val, r.val);
-					/**
-					 * For not equal to operator
-					 */
-					if (eq != 0 && op == OP_NEQ)
-						result.val = true;
-					/**
-					 *  for equal operator
-					 */
-					else if (eq == 0 && op == OP_EQ)
-						result.val = true;
-				}
-				/**
-				 * If at least one operand is null and not equal operator
-				 */
-				else if (l.val != null || r.val != null)
-					result.val = op == OP_NEQ ?  true : false;
-				/**
-				 * if both are null and operator is equal
-				 */
-				else if (op == OP_EQ)
-					result.val = true;
-			}
-			// '||' or '&&' operator
-			else if (op < OP_BET) {
-				/**
-				 * Check type, type must be boolean
-				 */
-				if (l.type != r.type || l.type != TYPE_BOOL)
-					tRex("Type mismatch/must be of boolean type '" + left.val + " " + op + " " + right.val + "'");
-				/**
-				 *  For '||' operator
-				 */
-				if (op == OP_OR && ((boolean) l.val || (boolean) r.val))
-					result.val = true;
-				/**
-				 *  For '&&' operator
-				 */
-				else if (op == OP_AND && ((boolean) l.val && (boolean) r.val))
-					result.val = true;
-			}
-			// 'between' or 'not between'
-			else if (op < OP_IN) {
-				/**
-				 * Type must match
-				 */
-				if (l.type != r.type)
-					tRex("Type mismatch '" + left.val + " " + op + " " + right.val + "'");
-				@SuppressWarnings("unchecked")
-				List<Object> list = (List<Object>) r.val;
-				/**
-				 * If between operator check the range
-				 */
-				if (op == OP_BET
-						&& (compare(l.type, l.val, list.get(0)) >= 0 && compare(l.type, l.val, list.get(1)) <= 0))
-					result.val = true;
-				/**
-				 * if not between operator
-				 */
-				else if (op == OP_NBET
-						&& (compare(l.type, l.val, list.get(0)) < 0 || compare(l.type, l.val, list.get(1)) > 0))
-					result.val = true;
-			}
-			// 'in' or 'not in' operator
-			else {
-				/**
-				 * Check type 
-				 */
-				if (l.type != r.type)
-					tRex("Type mismatch '" + left.val + " " + op + " " + right.val + "'");
-				/**
-				 * Get set of objects
-				 */
-				@SuppressWarnings("unchecked")
-				Set<Object> nSet = (Set<Object>) r.val;
-				/**
-				 * Verify set contains the left operand
-				 */
-				if (op == OP_IN && nSet.contains(l.val))
-					result.val = true;
-				/**
-				 * for not in 
-				 */
-				else if (op == OP_NIN && !nSet.contains(l.val))
-					result.val = true;
-			}
-
-			/**
-			 * If condition was not satisfied and the data was loaded using SortKey If so we
-			 * are done, no further data loading is required
-			 */
-			if (!(boolean) result.val && pos == lseq && seekBySk)
-				ctx.reset();
+		if (seekBySk && pos == lseq && !result.boolValue()) {
+			// reset context
+			ctx.reset();
+			// no more elements
+			throw new NoSuchElementException();
 		}
+		// return result
 		return result;
 	}
 
 	// Convert ID to Value node
 	private Node idToNode(Node n) {
-		if (n.type == TYPE_ID) {
+		if (n.isID()) {
 			// convert ID to value node now
-			Object obj = ctx.getFieldValue((String) n.val);
-			n = Node.objToNode(obj);
+			Object obj = ctx.getFieldValue(n.stringValue());
+			// convert to node
+			n = toNode(obj);
 		}
 		return n;
 	}
 
 	// Convert parameter Node to value node
-	private Node paramToNode(Node n, int op) {
-		if (n.type == TYPE_PRM) {
-			int index = (int) n.val;
+	private Node paramToNode(Node n) {
+		if (n.isParameter()) {
+			// get index
+			int index = n.intValue();
+			// check if index out of bound
 			if (index >= params.size())
 				throw new RuntimeException("Missing parameter at index : " + (index + 1));
+			// get Proper Node
 			n = params.get(index);
 		}
 		return n;
 	}
 
-	/**
-	 * Get higher value
-	 * 
-	 * @param n
-	 * @return
-	 */
-	private Object higherValue(Node n) {
-		Object v = null;
-		switch (n.type) {
-		// if number type
-		case TYPE_NUM:
-			MyNumber num = (MyNumber) n.val;
-			switch (num.type) {
-			case MyNumber.INT:
-				v = num.numObj.intValue() + 1;
-				break;
-			case MyNumber.LONG:
-				v = num.numObj.longValue() + 1;
-				break;
-			case MyNumber.FLT:
-				v = Math.nextUp(num.numObj.floatValue());
-				break;
-			case MyNumber.DBL:
-				v = Math.nextUp(num.numObj.doubleValue());
-				break;
-			}
-			break;
-		case TYPE_STR:
-			// convert string char array
-			char[] chars = ((String) n.val).toCharArray();
-			// copy entire chars except last to string builder
-			int len = chars.length - 1;
-			StringBuilder sbLocal = new StringBuilder();
-			// copy all chars
-			for (int i = 0; i < len; i++)
-				sbLocal.append(chars[i]);
-			// check if their is room to increment
-			if (chars[len] < Character.MAX_VALUE) {
-				chars[len] = (char) (chars[len] + 1);
-				sbLocal.append(chars[len]);
-			} else { // if not append a minimum character value
-				sbLocal.append(chars[len]);
-				sbLocal.append(Character.MIN_VALUE);
-			}
-			v = sbLocal.toString();
-			break;
-		// boolean type
-		case TYPE_BOOL:
-			boolean val = (boolean) n.val;
-			v = val ? val : true;
-			break;
-		case TYPE_NULL:
-			throw new RuntimeException("Null is not allowed for > operator");
-		default:
-			throw new RuntimeException("Unsupported type");
-		}
-		return v;
-	}
-
-	/**
-	 * Compare two node value
-	 * 
-	 * @param n1
-	 * @param n2
-	 * @return
-	 */
-	private int compare(int type, Object n1, Object n2) {
-		switch (type) {
-		// if number type
-		case TYPE_NUM:
-			MyNumber l = (MyNumber) n1;
-			MyNumber r = (MyNumber) n2;
-			return l.compareTo(r);
-		// if String type
-		case TYPE_STR:
-			String ls = (String) n1;
-			String rs = (String) n2;
-			return ls.compareTo(rs);
-		// if boolean
-		case TYPE_BOOL:
-			Boolean lb = (Boolean) n1;
-			Boolean rb = (Boolean) n2;
-			return lb.compareTo(rb);
-		// must be custom object
-		default:
-			throw new RuntimeException("Unsupported type");
-		}
-	}
-	
 	/**
 	 * Object Iterator implementation
 	 * 
@@ -1184,35 +1257,35 @@ public class QueryImp<T> implements Query<T> {
 	 * @param <T>
 	 */
 	private final class ObjectIteratorImp implements ObjectIterator<T> {
-		// iterator close indicator
+		/**
+		 * Iterator close indicator
+		 */
 		private boolean close = false;
 
 		@Override
 		public boolean hasNext() {
-			// if iterator closed already
-			status();
 			try {
 				/**
-				 * If data was not seek than increment to next record. loop until condition was
-				 * not satisfied till end
+				 * Check iterator status. 
 				 */
-				while (!seek || ctx.nextRecord()) {
-					pos = 0; // new evaluation indicator
-					Node tmp = evaluate(root);
-					// if no seek, break the loop and return false
-					if (!seek)
-						throw new NoSuchElementException();
-					// if match found
-					if ((boolean) tmp.val)
-						return true;
+				status();
+				/**
+				 * Advance to next record if data already seek
+				 */
+				while (!seek || ctx.nextRecord()){
+					// new evaluation indicator
+					pos = 0; 
+					// start evaluating expression
+					if (evaluate(root).boolValue())
+						return true;					
 				}
-			} catch (Throwable t) {
-				close();
-				throw t;
-			}
-			// close iterator
-			close();
-			return false;
+				/**
+				 * No more record
+				 */
+				throw new NoSuchElementException();
+			}  
+			catch (NoSuchElementException e) { close(); return false; }
+			catch (Throwable t) { close(); throw t;	}			
 		}
 
 		@Override
@@ -1244,139 +1317,23 @@ public class QueryImp<T> implements Query<T> {
 		 * @return
 		 */
 		private boolean status() {
-			if (close)
-				throw new RuntimeException("Iterator closed already");
-			return true;
+			if (!close)
+				return true;
+			// either throw exception 
+			throw new RuntimeException("Iterator closed already");			
 		}
 
 	}
 
-	/**
-	 * Expression tree node
-	 * 
-	 * @author prasantsmac
-	 *
-	 */
-	private static final class Node {
-		/** terminal or non terminal value */
-		private Object val;
-		/** operator priority */
-		private int priority = -1;
-		/** node type value */
-		private int type = -1;
-		/** Left/right sub tree pointer */
-		private Node left, right;
-
-		// constructors
-		private Node(Object val, int type) {
-			this.val = val;
-			this.type = type;
-		}
-
-		private Node(Object val, int type, int priority) {
-			this(val, type);
-			this.priority = priority;
-		}
-
-		// redefine node
-		private void reset(Object val, int type, int priority, Node l, Node r) {
-			this.left = l;
-			this.right = r;
-			this.val = val;
-			this.type = type;
-			this.priority = priority;
-		}
-
-		// clone Node
-		private Node copy() {
-			Node node = new Node(this.val, this.type, this.priority);
-			node.left = this.left;
-			node.right = this.right;
-			return node;
-		}
-
-		// Object to node mapping
-		private static Node objToNode(Object obj) {
-			if (obj == null)
-				return new Node(obj, TYPE_NULL);
-			if (obj instanceof String)
-				return new Node(obj, TYPE_STR);
-			if (obj instanceof Integer)
-				return new Node(new MyNumber(MyNumber.INT, obj), TYPE_NUM);
-			if (obj instanceof Long)
-				return new Node(new MyNumber(MyNumber.LONG, obj), TYPE_NUM);
-			if (obj instanceof Float)
-				return new Node(new MyNumber(MyNumber.FLT, obj), TYPE_NUM);
-			if (obj instanceof Double)
-				return new Node(new MyNumber(MyNumber.DBL, obj), TYPE_NUM);
-			if (obj instanceof Boolean)
-				return new Node(obj, TYPE_BOOL);
-			else
-				throw new RuntimeException("Unknow data type");
-		}
-
-		@Override
-		public String toString() {
-			if (val == null)
-				return "null";
-			else if (type != TYPE_OP)
-				return val.toString();
-			else {
-				int v = (int) val;
-				switch (v) {
-				case OP_GT:
-					return STR_GT;
-				case OP_LT:
-					return STR_LT;
-				case OP_GTE:
-					return STR_GTE;
-				case OP_LTE:
-					return STR_LTE;
-				case OP_EQ:
-					return STR_EQ;
-				case OP_NEQ:
-					return STR_NEQ;
-				case OP_AND:
-					return STR_AND;
-				case OP_OR:
-					return STR_OR;
-				case OP_ADD:
-					return STR_ADD;
-				case OP_SUB:
-					return STR_SUB;
-				case OP_MUL:
-					return STR_MUL;
-				case OP_DIV:
-					return STR_DIV;
-				case OP_MOD:
-					return STR_MOD;
-				case OP_IN:
-					return STR_IN;
-				case OP_BET:
-					return STR_BET;
-				case OP_PRN:
-					return STR_PRN;
-				case OP_NIN:
-					return STR_NOT + " " + STR_IN;
-				case OP_NBET:
-					return STR_NOT + " " + STR_BET;
-				default:
-					tRex("Unknown operator");
-				}
-			}
-			return null;
-		}
-	}
-
-	private static void tRex(String msg) {
+	static void tRex(String msg) {
 		throw new RuntimeException(msg);
 	}
 
-	private static void tRexOprnd(int curPos) {
+	static void tRexOprnd(int curPos) {
 		throw new RuntimeException("Expecting number/identifier/string" + "/'null'/'true'/'false'/'?' @" + curPos);
 	}
 
-	private static void tRexOp(int curPos) {
+	static void tRexOp(int curPos) {
 		throw new RuntimeException("Expecting operators (e.g. >, <, >=, <= ...etc) @" + curPos);
 	}	
 }

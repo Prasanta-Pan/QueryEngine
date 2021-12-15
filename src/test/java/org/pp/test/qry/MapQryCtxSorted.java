@@ -2,9 +2,9 @@ package org.pp.test.qry;
 
 import java.util.Map;
 
-import org.pp.qry.interfaces.QueryContext;
+import org.pp.qry.interfaces.QueryDataProvider;
 
-public class MapQryCtxSorted implements QueryContext<Map<String,Object>> {
+public class MapQryCtxSorted implements QueryDataProvider<Map<String,Object>> {
     
 	
 	@Override

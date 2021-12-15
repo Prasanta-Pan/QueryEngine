@@ -6,7 +6,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-class AbstractTestMap {
+class AbstractTest {
 	/**
 	 * Prepared some test data
 	 */
@@ -15,24 +15,39 @@ class AbstractTestMap {
 	 * Load data during boot
 	 */
 	static {
-		list.add(getMap("Prasanta Pan", "pan.prasanta@gmail.com", 84984827, 5.73f, 10, "46 eastwood rd"));
-		list.add(getMap("Prasanta Pan", "pan.prasanta@gmail.com", 84984827, 10.30f, 15, "46 eastwood rd"));
-		list.add(getMap("Prasanta Pan", "pan.prasanta@gmail.com", 84984827, 15.54f, 20, "46 eastwood rd"));
+		list.add(getMap("Prasanta Pan", "pan.prasanta@gmail.com", 84984827, 5.73f, 10, "46 eastwood rd", true));
+		list.add(getMap("Prasanta Pan", "pan.prasanta@gmail.com", 84984827, 10.30f, 15, "46 eastwood rd", true));
+		list.add(getMap("Prasanta Pan", "pan.prasanta@gmail.com", 84984827, 15.54f, 20, "46 eastwood rd", true));
 		
-		list.add(getMap("Maumita Pan", "pan.maumita@gmail.com", 83995981, 5.73f, 10, "46 eastwood rd"));
-		list.add(getMap("Maumita Pan", "pan.maumita@gmail.com", 83995981, 10.30f, 15, "46 eastwood rd"));
-		list.add(getMap("Maumita Pan", "pan.maumita@gmail.com", 83995981, 15.54f, 20, "46 eastwood rd"));
+		list.add(getMap("Maumita Pan", "pan.maumita@gmail.com", 83995981, 5.73f, 10, "46 eastwood rd", false));
+		list.add(getMap("Maumita Pan", "pan.maumita@gmail.com", 83995981, 10.30f, 15, "46 eastwood rd", false));
+		list.add(getMap("Maumita Pan", "pan.maumita@gmail.com", 83995981, 15.54f, 20, "46 eastwood rd", false));
 		
-		list.add(getMap("Moana Pan", "pan.moana@gmail.com", 83995982, 5.73f, 10, "46 eastwood rd"));
-		list.add(getMap("Moana Pan", "pan.moana@gmail.com", 83995982, 10.30f, 15, "46 eastwood rd"));
-		list.add(getMap("Moana Pan", "pan.moana@gmail.com", 83995982, 15.54f, 20, "46 eastwood rd"));
+		list.add(getMap("Moana Pan", "pan.moana@gmail.com", 83995982, 5.73f, 10, "46 eastwood rd", false));
+		list.add(getMap("Moana Pan", "pan.moana@gmail.com", 83995982, 10.30f, 15, "46 eastwood rd", false));
+		list.add(getMap("Moana Pan", "pan.moana@gmail.com", 83995982, 15.54f, 20, "46 eastwood rd", false));
 	}
+	
 	/**
 	 * Return input data
 	 * @return
 	 */
 	protected List<Map<String, Object>> getList() {
 		return list;
+	}
+	
+	/**
+	 * Return sample list for arithmetic test
+	 * @return
+	 */
+	protected List<Map<String, Object>> getListArith() {
+		// new list
+		List<Map<String, Object>> listA = new ArrayList<>();
+		// double, float, integer, long, String, true, false , null
+		listA.add(getMapArith(123.321d, 543.23, 6321, 5432l, "pan.prasanta@gmail.com", true, false, null));
+		listA.add(getMapArith(567.37d, 453.67, 8976, 987l, "pan.moana@gmail.com", true, false, null));
+		listA.add(getMapArith(76.78d, 400.11, 987, 563l, "pan.maumita@gmail.com", true, false, null));
+		return listA;
 	}
 	
 	/**
@@ -47,7 +62,21 @@ class AbstractTestMap {
 		m.put("mobile", vals[2]);
 		m.put("price", vals[3]);
 		m.put("units", vals[4]);
-		m.put("address", vals[5]);		
+		m.put("address", vals[5]);	
+		m.put("gendar", vals[6]);	
+		return m;
+	}
+	
+	protected static Map<String,Object> getMapArith(Object...vals) {
+		Map<String,Object> m = new HashMap<>();
+		m.put("d", vals[0]); // double
+		m.put("f", vals[1]); // float
+		m.put("i", vals[2]); // integer
+		m.put("l", vals[3]); // long
+		m.put("s", vals[4]); // String
+		m.put("t", vals[5]); // true
+		m.put("f", vals[6]); // false
+		m.put("n", vals[7]); // null
 		return m;
 	}
 	/**
@@ -58,7 +87,7 @@ class AbstractTestMap {
 		StringBuilder sbldr = new StringBuilder();
 		for (Map<String, Object> m: fList) {
 			for (Object o : m.values())
-				sbldr.append(o.toString() + ",");
+				sbldr.append(o + ",");
 			
 			sbldr.append("\n");
 		}

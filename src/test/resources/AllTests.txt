@@ -1,0 +1,60 @@
+// A sample query
+# TestName
+A simple test
+
+# Query
+// A simple query
+((a + b) * c) > d && (e = 'pan.prasanta@gmail.com' && f > 10)
+
+# input
+a,	b,	c, 	d, 	e,	f
+5,	6,	7,	55,	"pan.prasanta@gmail.com",	15
+5,	6,	7,	100, "pan.moana@gmail.com",	5
+
+# Param
+// parameter position = Value
+1 = 'pan.prasanta@gmail.com'
+2 = 50
+3 = true
+
+# SortKey
+// sort key order
+a, b, c
+
+# error
+// error output message
+Invalid expression, expression must be evaluated to binary value
+
+
+
+// Another sample query
+# TestName
+A simple arithmetic test
+
+# Query
+// A simple query
+((a + b) * c) > d && (e = 'pan.prasanta@gmail.com' && f > 10)
+
+# Reverse 
+// if reverse order
+true
+
+# input
+a,	b,	c, 	d, 	e,	f
+5,	6,	7,	55,	"pan.prasanta@gmail.com",	15
+5,	6,	7,	100,	"pan.moana@gmail.com",	5
+
+# SortKeys
+// sort key order
+a, b, c
+
+# output
+// result set
+
+a,	b,	c, 	d, 	e,	f
+5,	6,	7,	55,	"pan.prasanta@gmail.com",	15
+5,	6,	7,	100,	"pan.moana@gmail.com",	5
+
+
+
+

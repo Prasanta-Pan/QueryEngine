@@ -4,9 +4,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.pp.qry.interfaces.QueryContext;
+import org.pp.qry.interfaces.QueryDataProvider;
 
-class MapQryCtx implements QueryContext<Map<String,Object>> {
+class MapQryCtx implements QueryDataProvider<Map<String,Object>> {
 	// list of map
 	final List<Map<String,Object>> listMap;
 	// iterator
