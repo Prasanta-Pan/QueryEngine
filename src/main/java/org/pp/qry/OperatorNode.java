@@ -108,10 +108,14 @@ class OperatorNode extends AbstractNode {
 				return STR_BET;
 			case OP_PRN:
 				return STR_PRN;
+			case OP_LIKE:
+				return STR_LIKE;
 			case OP_NIN:
 				return STR_NOT + " " + STR_IN;
 			case OP_NBET:
 				return STR_NOT + " " + STR_BET;
+			case OP_NLIKE:
+				return STR_NOT + " " + STR_LIKE;
 			default:
 				throw new RuntimeException("Unknown operator");
 		}

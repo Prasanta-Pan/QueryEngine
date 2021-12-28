@@ -23,6 +23,8 @@ import static org.pp.qry.interfaces.Node.OP_NIN;
 import static org.pp.qry.interfaces.Node.OP_OR;
 import static org.pp.qry.interfaces.Node.OP_PRN;
 import static org.pp.qry.interfaces.Node.OP_SUB;
+import static org.pp.qry.interfaces.Node.OP_LIKE;
+import static org.pp.qry.interfaces.Node.OP_NLIKE;
 import static org.pp.qry.interfaces.Node.PRI_AND;
 import static org.pp.qry.interfaces.Node.PRI_COND_OP;
 import static org.pp.qry.interfaces.Node.PRI_MATH_HIGH;
@@ -48,6 +50,8 @@ import static org.pp.qry.interfaces.Node.STR_NOT;
 import static org.pp.qry.interfaces.Node.STR_OR;
 import static org.pp.qry.interfaces.Node.STR_PRN_END;
 import static org.pp.qry.interfaces.Node.STR_SUB;
+import static org.pp.qry.interfaces.Node.STR_LIKE;
+import static org.pp.qry.interfaces.Node.STR_NLIKE;
 import static org.pp.qry.interfaces.Node.TYPE_NUM;
 import static org.pp.qry.interfaces.Node.TYPE_OP;
 import static org.pp.qry.interfaces.Node.TYPE_PRN;
@@ -85,21 +89,21 @@ public class QueryImp<T> implements Query<T> {
 	/** Load sequence number */
 	private int lseq = 0;
 	/** User parameters */
-	private List<Node> params = new ArrayList<>();
+	private Node[] params = null;
 	/** Parameter Index */
 	private int prmIndx = 0;
-	/** To build token */
-	private StringBuilder sb = new StringBuilder();
-	/** To help build tree (expression) */
-	private Deque<Node> stk = new LinkedList<>();
 	/** if data was seek already */
 	private boolean seek = false;
 	/** Order of traversing */
 	private boolean rev = false;
 	/** if seek by sort key */
 	private boolean seekBySk = false;
+	/** To build token */
+	private StringBuilder sb = new StringBuilder();
+	/** To help build tree (expression) */
+	private Deque<Node> stack = new LinkedList<>();
 	// all action to Execute
-	static final AbstractAction[] actions = new AbstractAction[17];
+	private static final AbstractAction[] actions = new AbstractAction[19];
 	
 	// configure all actions
     static {
@@ -396,6 +400,46 @@ public class QueryImp<T> implements Query<T> {
 				return left.or(right, true);
 			} 		
     	};
+    	// like action
+    	actions[OP_LIKE] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.like(right, false);
+			}
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.like(right, true);
+			}
+			
+			@Override
+			public boolean seekable() {
+				// TODO Auto-generated method stub
+				return true;
+			}
+
+			@Override
+			public Object getSeekableValue(Node value, boolean rev) {
+				// TODO Auto-generated method stub
+				if (value instanceof StringNode) {
+					return rev ? value.higherValue() : value.value();					
+				}	
+				// or throw exception
+				throw new RuntimeException("Was expecting a StringNode type");
+			}    		
+    	};
+    	// not like action
+    	actions[OP_NLIKE] = new AbstractAction() {
+			@Override
+			public Node execute(Node left, Node right) {
+				return left.nlike(right, false);
+			}
+			
+			@Override
+			public Node validate(Node left, Node right) {
+				return left.nlike(right, true);
+			}			 		
+    	};
     }
     
 	private QueryImp() {		
@@ -417,7 +461,7 @@ public class QueryImp<T> implements Query<T> {
 	public void close() {
 		ctx.reset();
 		seek = seekBySk = false;
-		stk = null;
+		stack = null;
 		chars = null;
 		params = null;
 		root = null;
@@ -427,12 +471,12 @@ public class QueryImp<T> implements Query<T> {
 	private Query<T> add(int pos, Node node) {
 		// check position 
 		pos = pos -1;
-		if (pos < 0 || pos > params.size())
-			throw new RuntimeException("Invalid parameter position: " + pos);
+		if (pos < 0 || pos >= prmIndx)
+			throw new RuntimeException("Invalid parameter index: " + pos);
 		// add node
-		params.add(pos, node);
-		return this;
-			
+		params[pos] = node;
+		// 
+		return this;			
 	}
 
 	@Override
@@ -510,7 +554,7 @@ public class QueryImp<T> implements Query<T> {
 		if (newList.get(0).compare(newList.get(1)) >= 0)
 			throw new RuntimeException("Invalid range");
 		// add to parameter list
-		return add(pos, node);
+		return add(pos, new ListNode(newList));
 	}
 
 	@Override
@@ -536,7 +580,7 @@ public class QueryImp<T> implements Query<T> {
 			newSet.add(node);
 		}
 		// add to parameter list
-		return add(pos, node);
+		return add(pos, new SetNode(newSet, tmp instanceof NumberNode ? true : false));
 	}
 	
 	@Override
@@ -583,7 +627,6 @@ public class QueryImp<T> implements Query<T> {
 	 */
 	void reset() {
 		ctx.reset();
-		params = new ArrayList<>();
 		pos = lseq = 0;
 		seek = seekBySk = false;
 	}
@@ -594,36 +637,67 @@ public class QueryImp<T> implements Query<T> {
 	private void compile() {
 		expr();
 		// Stack size
-		if (stk.size() != 1)
+		if (stack.size() != 1)
 			tRex("Invalid Expression");
 		// assign it to root node
-		root = stk.pop();
-		if (root.getPriority()> PRI_COND_OP)
+		root = stack.pop();
+		if (root.getPriority() > PRI_COND_OP)
 			tRex("Invalid expression, expression must be evaluated to binary value");
 		// validate expression tree now
 		validate(root);
+		// allocate parameter array
+		params = new Node[prmIndx];
 	}
 
 	/**
 	 * Start parsing expression
 	 */
 	private void expr() {
+		// get next char token
 		char token = checkNextChar();
-		// if start of parentheses
-		if (token == '(') {
-			pos++;
-			stk.push(new OperatorNode(OP_PRN, TYPE_PRN, PRI_PARAN));
-			// call expression recursively
-			expr();
-			if (checkNextChar() != ')')
-				throw new RuntimeException("Expecting ')' @" + pos);
-			// process parentheses
-			processParan();
-			pos++;
+		// check special action
+		switch (token) {
+		    // if start of parentheses
+		    case '(' :
+		    	pos++;
+				stack.push(new OperatorNode(OP_PRN, TYPE_PRN, PRI_PARAN));
+				// call expression recursively
+				expr();
+				if (checkNextChar() != ')')
+					throw new RuntimeException("Expecting ')' @" + pos);
+				// process parentheses
+				processParan();
+				pos++;
+				break;
+			// if not operator
+		    case '!' :
+		    	pos++;
+		    	// push parentheses
+		    	stack.push(new OperatorNode(OP_PRN, TYPE_PRN, PRI_PARAN));
+		    	// check next token
+		    	token = checkNextChar();
+		    	// if start of '('
+		    	if ('(' == checkNextChar()) {
+		    		// process '('
+		    		expr();
+		    		// must be a boolean condition
+		    		if (stack.peek().isOperator() &&  stack.peek().intValue() < OP_LT)
+		    			tRex("! operator not defined for node " + stack.peek());
+		    	} else {
+		    		// get the operand
+			    	operand();
+		    	}		    	
+		    	// push EQ operator
+		    	stack.push(new OperatorNode(OP_EQ, TYPE_OP, PRI_COND_OP));
+		    	// build tree now
+		    	buildTree(new BooleanNode(false));
+		    	// process parentheses now
+		    	processParan();
+				break;
+			// rest is regular default actions
+			default :
+				operand();
 		}
-		// otherwise must expect a operand
-		else 
-			operand();
 		// check any operator available or not
 		operator();
 	}
@@ -633,21 +707,21 @@ public class QueryImp<T> implements Query<T> {
 	 */
 	private void processParan() {
 		// remove right operand
-		Node r = stk.pop();
+		Node r = stack.pop();
 		if (r.getType() == TYPE_PRN)
 			return;
 		// remove '('
-		stk.pop();
+		stack.pop();
 		// Make it high priority
 		if (r.isOperator())
 			r.setPriority(PRI_PARAN);
 		// build tree if stack not empty
-		if (!stk.isEmpty() && stk.peek().getType() == TYPE_OP) {
+		if (!stack.isEmpty() && stack.peek().getType() == TYPE_OP) {
 			buildTree(r);
 		}
      	// otherwise push to stack
 		else 
-			stk.push(r);
+			stack.push(r);
 	}
 
 	/**
@@ -668,28 +742,28 @@ public class QueryImp<T> implements Query<T> {
 			if (op.length() == 1) {
 				switch (op) {
 				case STR_GT:
-					stk.push(new OperatorNode(OP_GT, TYPE_OP, PRI_COND_OP));
+					stack.push(new OperatorNode(OP_GT, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_LT:
-					stk.push(new OperatorNode(OP_LT, TYPE_OP, PRI_COND_OP));
+					stack.push(new OperatorNode(OP_LT, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_EQ:
-					stk.push(new OperatorNode(OP_EQ, TYPE_OP, PRI_COND_OP));
+					stack.push(new OperatorNode(OP_EQ, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_ADD:
-					stk.push(new OperatorNode(OP_ADD, TYPE_OP, PRI_MATH_LOW));
+					stack.push(new OperatorNode(OP_ADD, TYPE_OP, PRI_MATH_LOW));
 					break;
 				case STR_SUB:
-					stk.push(new OperatorNode(OP_SUB, TYPE_OP, PRI_MATH_LOW));
+					stack.push(new OperatorNode(OP_SUB, TYPE_OP, PRI_MATH_LOW));
 					break;
 				case STR_MUL:
-					stk.push(new OperatorNode(OP_MUL, TYPE_OP, PRI_MATH_HIGH));
+					stack.push(new OperatorNode(OP_MUL, TYPE_OP, PRI_MATH_HIGH));
 					break;
 				case STR_DIV:
-					stk.push(new OperatorNode(OP_DIV, TYPE_OP, PRI_MATH_HIGH));
+					stack.push(new OperatorNode(OP_DIV, TYPE_OP, PRI_MATH_HIGH));
 					break;
 				case STR_MOD:
-					stk.push(new OperatorNode(OP_MOD, TYPE_OP, PRI_MATH_HIGH));
+					stack.push(new OperatorNode(OP_MOD, TYPE_OP, PRI_MATH_HIGH));
 					break;
 				case STR_PRN_END:
 					pos = cPos;
@@ -702,19 +776,19 @@ public class QueryImp<T> implements Query<T> {
 			else if (op.length() == 2) {
 				switch (op) {
 				case STR_GTE:
-					stk.push(new OperatorNode(OP_GTE, TYPE_OP, PRI_COND_OP));
+					stack.push(new OperatorNode(OP_GTE, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_LTE:
-					stk.push(new OperatorNode(OP_LTE, TYPE_OP, PRI_COND_OP));
+					stack.push(new OperatorNode(OP_LTE, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_NEQ:
-					stk.push(new OperatorNode(OP_NEQ, TYPE_OP, PRI_COND_OP));
+					stack.push(new OperatorNode(OP_NEQ, TYPE_OP, PRI_COND_OP));
 					break;
 				case STR_OR:
-					stk.push(new OperatorNode(OP_OR, TYPE_OP, PRI_OR));
+					stack.push(new OperatorNode(OP_OR, TYPE_OP, PRI_OR));
 					break;
 				case STR_AND:
-					stk.push(new OperatorNode(OP_AND, TYPE_OP, PRI_AND));
+					stack.push(new OperatorNode(OP_AND, TYPE_OP, PRI_AND));
 					break;
 				case STR_IN:
 					processSplOp(OP_IN);
@@ -737,6 +811,9 @@ public class QueryImp<T> implements Query<T> {
 					   case STR_IN:
 						processSplOp(OP_NIN);
 						return;
+					   case STR_LIKE :
+						   stack.push(new OperatorNode(OP_NLIKE, TYPE_OP, PRI_COND_OP));
+						   break;
 					  default:
 						tRex("Expecting 'between' or 'in' operator @" + cPos);
 					}
@@ -750,6 +827,12 @@ public class QueryImp<T> implements Query<T> {
 				case STR_NIN:
 					processSplOp(OP_NIN);
 					return;
+				case STR_LIKE :
+					stack.push(new OperatorNode(OP_LIKE, TYPE_OP, PRI_COND_OP));
+					break;
+				case STR_NLIKE :
+					stack.push(new OperatorNode(OP_NLIKE, TYPE_OP, PRI_COND_OP));
+					break;
 				default:
 					tRexOp(cPos);
 				}
@@ -807,7 +890,7 @@ public class QueryImp<T> implements Query<T> {
 	 */
 	private void processSplOp(int op) {
 		// push condition to stack
-		stk.push(new OperatorNode(op, TYPE_OP, PRI_COND_OP));
+		stack.push(new OperatorNode(op, TYPE_OP, PRI_COND_OP));
 		// Check parentheses start
 		Node r = null;
 		int cPos = pos;
@@ -815,7 +898,7 @@ public class QueryImp<T> implements Query<T> {
 		// if wild card no need to proceed further
 		if (ch == '?') {
 			operand();
-			r = stk.pop();
+			r = stack.pop();
 		} else {
 			if (ch != '(')
 				throw new RuntimeException("Expecting '(' @" + cPos);
@@ -828,7 +911,7 @@ public class QueryImp<T> implements Query<T> {
 				// get next operand
 				operand();
 				// pop last recorded operand
-				r = stk.pop();
+				r = stack.pop();
 				// check prohibited operators
 				int opr = r.getType();
 				if (!(opr == TYPE_NUM || opr == TYPE_STR))
@@ -942,8 +1025,8 @@ public class QueryImp<T> implements Query<T> {
 				tRexOprnd(c);
 		}		
 		// stack is empty or its between/in (not) operator
-		if (stk.isEmpty() || stk.peek().intValue() > OP_OR) {
-			stk.push(oprnd);
+		if (stack.isEmpty() || stack.peek().intValue() > OP_OR) {
+			stack.push(oprnd);
 			return;
 		}
 		// Now build tree if possible
@@ -1046,9 +1129,9 @@ public class QueryImp<T> implements Query<T> {
 	 */
 	private void buildTree(Node r) {
 		// Pop operator
-		Node op = stk.pop();
+		Node op = stack.pop();
 		// Pop left operand or subtree
-		Node l = stk.pop();
+		Node l = stack.pop();
         // 
 		Node tmp = l, parent = null;
 		// find the right most node
@@ -1068,7 +1151,7 @@ public class QueryImp<T> implements Query<T> {
 		else
 			parent.setRight(op);
 		// Push root to stack
-		stk.push(l);
+		stack.push(l);
 	}
 	
 	/**
@@ -1240,11 +1323,11 @@ public class QueryImp<T> implements Query<T> {
 		if (n.isParameter()) {
 			// get index
 			int index = n.intValue();
-			// check if index out of bound
-			if (index >= params.size())
-				throw new RuntimeException("Missing parameter at index : " + (index + 1));
-			// get Proper Node
-			n = params.get(index);
+			// get the index  Node
+			n = params[index];
+			// if null, throw exception
+			if (n == null)
+				throw new NullPointerException("Parameter missing at index " + index);
 		}
 		return n;
 	}

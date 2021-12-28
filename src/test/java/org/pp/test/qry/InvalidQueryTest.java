@@ -13,7 +13,7 @@ public class InvalidQueryTest extends AbstractTest {
 		String qry = "email + 5 || true";
 		@SuppressWarnings("unused")
 		Query<Map<String, Object>> q = new QueryImp<>(qry, new MapQryCtx(getList()));
-	}
+	}	
 	
 	@Test()
 	public void invalidAddSet() {

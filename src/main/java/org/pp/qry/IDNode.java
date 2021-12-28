@@ -81,28 +81,32 @@ class IDNode extends AbstractNode {
 	@Override
 	public Node bet(Node othr, boolean validate) {
 		// TODO Auto-generated method stub
-		return validate && othr instanceof ListNode ? 
+		return validate && (othr instanceof ListNode ||
+							othr instanceof ParameterNode) ? 
 				new BooleanNode(true) : super.bet(othr, validate);
 	}
 
 	@Override
 	public Node nbet(Node othr, boolean validate) {
 		// TODO Auto-generated method stub
-		return validate && othr instanceof ListNode ? 
+		return validate && (othr instanceof ListNode ||
+							othr instanceof ParameterNode) ? 
 				new BooleanNode(true) : super.nbet(othr, validate);
 	}
 
 	@Override
 	public Node in(Node othr, boolean validate) {
 		// TODO Auto-generated method stub
-		return validate && othr instanceof SetNode ?
+		return validate && (othr instanceof SetNode || 
+							othr instanceof ParameterNode) ?
 				new BooleanNode(true) : super.in(othr, validate);
 	}
 
 	@Override
 	public Node nin(Node othr, boolean validate) {
 		// TODO Auto-generated method stub
-		return validate && othr instanceof SetNode ?
+		return validate && (othr instanceof SetNode || 
+							othr instanceof ParameterNode) ?
 				new BooleanNode(true) : super.nin(othr, validate);
 	}
 

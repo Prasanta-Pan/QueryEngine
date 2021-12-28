@@ -24,20 +24,24 @@ public interface Node {
 							= 9;	// '='
 	public static final int OP_NEQ 
 							= 10;	// '!='
+	public static final int OP_LIKE 
+							= 11;  // like
+	public static final int OP_NLIKE 
+							= 12; // not like
 	public static final int OP_AND 
-							= 11;	// '&&'
+							= 13;	// '&&'
 	public static final int OP_OR 
-							= 12;	// '||'
+							= 14;	// '||'
 	public static final int OP_BET 
-							= 13;	// 'bet' || 'between'
+							= 15;	// 'bet' || 'between'
 	public static final int OP_NBET 
-							= 14;	// 'not between' || 'nbet'
+							= 16;	// 'not between' || 'nbet'
 	public static final int OP_IN 
-							= 15;	// 'in' 
+							= 17;	// 'in' 
 	public static final int OP_NIN 
-							= 16;	// 'not in' || 'nin'
+							= 18;	// 'not in' || 'nin'
 	public static final int OP_PRN 
-							= 17;	// '(' || ')'
+							= 19;	// '(' || ')'
 
 	/** Declares operator's priority */
 	public static final int PRI_PARAN 
@@ -112,6 +116,10 @@ public interface Node {
 						= "(";
 	public static final String STR_PRN_END 
 						= ")";
+	public static final String STR_LIKE 
+						= "like";
+	public static final String STR_NLIKE 
+						= "nlike";
     /**
      * Get Node type
      * @return
@@ -154,6 +162,20 @@ public interface Node {
 	 * @return
 	 */
 	public Node neq(Node othr, boolean validate);
+	/**
+	 * Perform 'like' action
+	 * @param othr
+	 * @param validate
+	 * @return
+	 */
+	public Node like(Node othr, boolean validate);
+	/**
+	 * Perform 'not like' action
+	 * @param othr
+	 * @param validate
+	 * @return
+	 */
+	public Node nlike(Node othr, boolean validate);
     /**
      * Perform greater than action
      * @param othr

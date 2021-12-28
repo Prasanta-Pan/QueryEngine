@@ -82,7 +82,7 @@ class AbstractNode implements Node {
 		return (othr instanceof NumberNode ||
 				 othr instanceof ParameterNode ||
 				 othr instanceof IDNode);
-	}	
+	}
 		
 	@Override
 	public int getType() {
@@ -196,6 +196,18 @@ class AbstractNode implements Node {
 		// TODO Auto-generated method stub
 		throw new UnsupportedOperationException("Operator '!=' is undefined for datatypes, left: " + toString() + ", right: " + othr.toString());
 	}
+	
+	@Override
+	public Node like(Node othr, boolean validate) {
+		// TODO Auto-generated method stub
+		throw new UnsupportedOperationException("Operator 'like' is undefined for datatypes, left: " + toString() + ", right: " + othr.toString());
+	}
+
+	@Override
+	public Node nlike(Node othr, boolean validate) {
+		// TODO Auto-generated method stub
+		throw new UnsupportedOperationException("Operator 'not like' is undefined for datatypes, left: " + toString() + ", right: " + othr.toString());
+	}
 
 	@Override
 	public Node gt(Node othr, boolean validate) {
@@ -285,5 +297,5 @@ class AbstractNode implements Node {
 	public Node rem(Node othr, boolean validate) {
 		// TODO Auto-generated method stub
 		throw new UnsupportedOperationException("Operator '%' is undefined for datatypes, left: " + toString() + ", right: " + othr.toString());
-	}	
+	}		
 }
