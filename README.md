@@ -175,7 +175,7 @@ public interface QueryDataProvider<T> {
 ```
 The below diagram depicts the interaction between query engine and custom QueryDataProvider component.
 
-![Diagramme](https://github.com/Prasanta-Pan/QueryEngine/images/QueryEngine.png)
+![Diagramme](https://github.com/Prasanta-Pan/QueryEngine/blob/main/images/QueryEngine.png)
 
 
 
